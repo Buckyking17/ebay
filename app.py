@@ -4,7 +4,7 @@ import hashlib
 app = Flask(__name__)
 
 VERIFICATION_TOKEN = "v58RusaLjMPPUEbygX9VoEcXiXCBpLewAusgQz6vV7sOFW6Gdlhps27gqFlITq78"
-ENDPOINT_URL = "https://ebay-mrae.onrender.com"  # Thay bằng URL thật của bạn
+ENDPOINT_URL = "https://ebay-mrae.onrender.com/ebay/account-deletion"  # Thay bằng URL thật của bạn
 
 @app.route("/")
 def home():
