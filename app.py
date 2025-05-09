@@ -1,14 +1,21 @@
 from flask import Flask, request, jsonify
 import hashlib
-import hmac
+import jwt  # PyJWT
+from jwt import algorithms
 
 app = Flask(__name__)
 
-# Thay chuỗi này bằng verification token thực của bạn (32-80 ký tự)
 VERIFICATION_TOKEN = "v58RusaLjMPPUEbygX9VoEcXiXCBpLewAusgQz6vV7sOFW6Gdlhps27gqFlITq78"
-
-# Đường dẫn endpoint đúng như đã đăng ký với eBay
 ENDPOINT_URL = "https://ebay-mrae.onrender.com/ebay/account-deletion"
+
+# Public key của eBay - dạng PEM
+EBAY_PUBLIC_KEY = """
+-----BEGIN PUBLIC KEY-----
+MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEQGZH1L7AjD7ztxzVONxvPOCjK1gFvXld
+kxRU9N60u1XyP8S5fMDaMwHhRpSGV6YtWZnHeVUVnxAKzSv6tfgMYF+Tr8b/7F3V
+5NRuyC+/fEo3Osu+kqTtbP79BszpkQAl
+-----END PUBLIC KEY-----
+"""
 
 @app.route("/")
 def home():
@@ -17,40 +24,33 @@ def home():
 @app.route("/ebay/account-deletion", methods=["GET", "POST"])
 def handle_account_deletion():
     if request.method == "GET":
-        # Xử lý yêu cầu xác minh endpoint từ eBay
         challenge_code = request.args.get("challenge_code")
         if not challenge_code:
             return jsonify({"error": "Missing challenge_code"}), 400
 
         data = challenge_code + VERIFICATION_TOKEN + ENDPOINT_URL
         challenge_response = hashlib.sha256(data.encode("utf-8")).hexdigest()
-
         return jsonify({"challengeResponse": challenge_response}), 200
 
     elif request.method == "POST":
-        # Nhận thông báo xóa tài khoản (eBay gửi POST với chữ ký HMAC)
-        signature = request.headers.get("X-eBay-Signature")
-        if not signature:
+        jwt_token = request.headers.get("X-eBay-Signature")
+        if not jwt_token:
             return jsonify({"error": "Missing signature"}), 401
 
-        # Lấy payload thô để tính HMAC SHA256
-        payload = request.get_data()
-        computed_signature = hmac.new(
-            VERIFICATION_TOKEN.encode("utf-8"),
-            payload,
-            hashlib.sha256
-        ).hexdigest()
-
-        # So sánh chữ ký
-        if signature.lower() != computed_signature.lower():
-            print("Signature mismatch!")
-            print("From eBay:", signature)
-            print("Computed :", computed_signature)
+        try:
+            decoded = jwt.decode(
+                jwt_token,
+                EBAY_PUBLIC_KEY,
+                algorithms=["ES256"],
+                options={"verify_aud": False}
+            )
+            print("✅ JWT verified:", decoded)
+        except Exception as e:
+            print("❌ JWT verification failed:", str(e))
             return jsonify({"error": "Unauthorized"}), 401
 
         data = request.get_json()
-        print("Received account deletion notice from eBay:", data)
-
+        print("📩 Received account deletion notice:", data)
         return jsonify({"status": "received"}), 200
 
 if __name__ == '__main__':
