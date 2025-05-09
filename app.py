@@ -4,7 +4,10 @@ import hmac
 
 app = Flask(__name__)
 
+# Thay chuỗi này bằng verification token thực của bạn (32-80 ký tự)
 VERIFICATION_TOKEN = "v58RusaLjMPPUEbygX9VoEcXiXCBpLewAusgQz6vV7sOFW6Gdlhps27gqFlITq78"
+
+# Đường dẫn endpoint đúng như đã đăng ký với eBay
 ENDPOINT_URL = "https://ebay-mrae.onrender.com/ebay/account-deletion"
 
 @app.route("/")
@@ -14,7 +17,7 @@ def home():
 @app.route("/ebay/account-deletion", methods=["GET", "POST"])
 def handle_account_deletion():
     if request.method == "GET":
-        # Xác minh endpoint từ eBay
+        # Xử lý yêu cầu xác minh endpoint từ eBay
         challenge_code = request.args.get("challenge_code")
         if not challenge_code:
             return jsonify({"error": "Missing challenge_code"}), 400
@@ -25,11 +28,13 @@ def handle_account_deletion():
         return jsonify({"challengeResponse": challenge_response}), 200
 
     elif request.method == "POST":
-        # Xác thực thông báo bằng chữ ký
+        # Nhận thông báo xóa tài khoản (eBay gửi POST với chữ ký HMAC)
         signature = request.headers.get("X-eBay-Signature")
-        payload = request.get_data()  # Lấy raw body (bytes)
+        if not signature:
+            return jsonify({"error": "Missing signature"}), 401
 
-        # Tính HMAC-SHA256
+        # Lấy payload thô để tính HMAC SHA256
+        payload = request.get_data()
         computed_signature = hmac.new(
             VERIFICATION_TOKEN.encode("utf-8"),
             payload,
@@ -37,10 +42,12 @@ def handle_account_deletion():
         ).hexdigest()
 
         # So sánh chữ ký
-        if signature != computed_signature:
+        if signature.lower() != computed_signature.lower():
+            print("Signature mismatch!")
+            print("From eBay:", signature)
+            print("Computed :", computed_signature)
             return jsonify({"error": "Unauthorized"}), 401
 
-        # Nhận dữ liệu JSON
         data = request.get_json()
         print("Received account deletion notice from eBay:", data)
 
