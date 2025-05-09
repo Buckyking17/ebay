@@ -19,4 +19,4 @@ def handle_account_deletion():
 
 
 if __name__ == '__main__':
-    aapp.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000)
