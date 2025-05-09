@@ -59,3 +59,6 @@ def handle_account_deletion():
         return jsonify({"status": "received"}), 200
 
     return jsonify({"error": "Invalid method"}), 405
+    
+    if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=5000)
