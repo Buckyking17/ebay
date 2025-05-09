@@ -4,6 +4,9 @@ app = Flask(__name__)
 
 VERIFICATION_TOKEN = "my-ebay-deletion-token-123"
 
+@app.route("/")
+def home():
+    return "Hello, Flask on Render!"
 
 @app.route("/ebay/account-deletion", methods=["POST"])
 def handle_account_deletion():
