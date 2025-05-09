@@ -1,64 +1,49 @@
-from flask import Flask, request, jsonify
 import hashlib
-import jwt  # PyJWT
 import json
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Thay bằng token thật bạn đã đăng ký trên eBay Developer Portal
 VERIFICATION_TOKEN = "v58RusaLjMPPUEbygX9VoEcXiXCBpLewAusgQz6vV7sOFW6Gdlhps27gqFlITq78"
-
-# Đường dẫn endpoint mà bạn đã đăng ký trên eBay
-ENDPOINT_URL = "https://ebay-mrae.onrender.com/ebay/account-deletion"
-
-@app.route("/")
-def home():
-    return "eBay Account Deletion Endpoint is live."
+ENDPOINT_URL = "https://ebay-mrae.onrender.com/ebay/account-deletion"  # URL của bạn
 
 @app.route("/ebay/account-deletion", methods=["GET", "POST"])
 def handle_account_deletion():
     if request.method == "GET":
-        # eBay gửi challenge_code để xác minh endpoint
+        # Xử lý yêu cầu challenge từ eBay
         challenge_code = request.args.get("challenge_code")
         if not challenge_code:
             return jsonify({"error": "Missing challenge_code"}), 400
-
-        # Tạo challengeResponse theo tài liệu của eBay
+        
+        # Tạo challenge response
         data = challenge_code + VERIFICATION_TOKEN + ENDPOINT_URL
         challenge_response = hashlib.sha256(data.encode("utf-8")).hexdigest()
 
         return jsonify({"challengeResponse": challenge_response}), 200
 
     elif request.method == "POST":
-        # eBay gửi thông báo xoá tài khoản qua POST, cần xác thực chữ ký
-        signature = request.headers.get("X-eBay-Signature")
-        body = request.get_data(as_text=True)
-
+        # Kiểm tra chữ ký trong header X-EBAY-SIGNATURE
+        signature = request.headers.get("X-EBAY-SIGNATURE")
         if not signature:
-            return jsonify({"error": "Missing X-eBay-Signature"}), 401
+            return jsonify({"error": "Missing X-EBAY-SIGNATURE"}), 401
+        
+        # Lấy dữ liệu từ yêu cầu
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Missing data in POST request"}), 400
+        
+        # Tính toán chữ ký từ dữ liệu và so sánh với chữ ký nhận được
+        # Cách tính toán chữ ký có thể thay đổi, tùy thuộc vào yêu cầu cụ thể từ eBay
+        calculated_signature = hashlib.sha256(json.dumps(data).encode('utf-8')).hexdigest()
+        
+        if signature != calculated_signature:
+            return jsonify({"error": "Invalid signature"}), 401
+        
+        # Xử lý dữ liệu thông báo xóa tài khoản từ eBay
+        print("Received account deletion notice from eBay:", data)
 
-        try:
-            decoded = jwt.decode(
-                signature,
-                algorithms=["ES256"],
-                options={"verify_signature": False},  # không verify để debug thôi
-            )
-            print("Decoded JWT (not verified):", decoded)
-        except Exception as e:
-            print("JWT Decode failed:", e)
-            return jsonify({"error": "Invalid JWT"}), 401
-
-        # Bạn có thể log hoặc xử lý dữ liệu xóa tài khoản tại đây
-        try:
-            data = json.loads(body)
-            print("eBay deletion request received:", data)
-        except Exception as e:
-            print("Invalid JSON body:", e)
-            return jsonify({"error": "Invalid request body"}), 400
-
+        # Trả về phản hồi cho eBay
         return jsonify({"status": "received"}), 200
 
-    return jsonify({"error": "Invalid method"}), 405
-    
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000)
