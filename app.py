@@ -1,11 +1,17 @@
 from flask import Flask, request, jsonify
 import hashlib
+import hmac
 import json
 
 app = Flask(__name__)
 
+# VERIFICATION_TOKEN là token của bạn được cung cấp bởi eBay
 VERIFICATION_TOKEN = "v58RusaLjMPPUEbygX9VoEcXiXCBpLewAusgQz6vV7sOFW6Gdlhps27gqFlITq78"
+# ENDPOINT_URL là URL của bạn
 ENDPOINT_URL = "https://ebay-mrae.onrender.com/ebay/account-deletion"  # URL của bạn
+
+# Secret key dùng để xác thực chữ ký (nếu cần thiết, hãy thay thế bằng secret key của bạn)
+SECRET_KEY = "your-secret-key-here"
 
 @app.route("/")
 def home():
@@ -37,9 +43,8 @@ def handle_account_deletion():
             return jsonify({"error": "Missing data in POST request"}), 400
         
         # Tính toán chữ ký từ dữ liệu và so sánh với chữ ký nhận được
-        # Cách tính toán chữ ký có thể thay đổi, tùy thuộc vào yêu cầu cụ thể từ eBay
-        calculated_signature = hashlib.sha256(json.dumps(data).encode('utf-8')).hexdigest()
-        
+        calculated_signature = calculate_signature(data)
+
         if signature != calculated_signature:
             return jsonify({"error": "Invalid signature"}), 401
         
@@ -48,6 +53,16 @@ def handle_account_deletion():
 
         # Trả về phản hồi cho eBay
         return jsonify({"status": "received"}), 200
+
+def calculate_signature(data):
+    """
+    Hàm tính toán chữ ký từ dữ liệu JSON
+    """
+    # Chuyển đổi dữ liệu JSON thành chuỗi
+    data_string = json.dumps(data, sort_keys=True)
+    
+    # Tính toán chữ ký HMAC-SHA256
+    return hmac.new(SECRET_KEY.encode('utf-8'), data_string.encode('utf-8'), hashlib.sha256).hexdigest()
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000)
