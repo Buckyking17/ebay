@@ -1,11 +1,15 @@
+from flask import Flask, request, jsonify
 import hashlib
 import json
-from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
 VERIFICATION_TOKEN = "v58RusaLjMPPUEbygX9VoEcXiXCBpLewAusgQz6vV7sOFW6Gdlhps27gqFlITq78"
 ENDPOINT_URL = "https://ebay-mrae.onrender.com/ebay/account-deletion"  # URL của bạn
+
+@app.route("/")
+def home():
+    return "Welcome to the eBay Notification Service!", 200
 
 @app.route("/ebay/account-deletion", methods=["GET", "POST"])
 def handle_account_deletion():
